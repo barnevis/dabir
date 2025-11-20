@@ -80,7 +80,7 @@ export class MouseHandler {
                 const listItem = target.closest('li.checklist-item');
                 if (listItem) {
                     setTimeout(() => { // Allow checkbox state to update
-                        if (!this.editor) return; // Check inside timeout
+                        if (!this.editor || this.editor.isDestroyed) return; // Check inside timeout
                         const isChecked = target.checked;
                         listItem.classList.toggle('checked', isChecked);
                         const childCheckboxes = listItem.querySelectorAll('li.checklist-item input[type="checkbox"]');
@@ -116,8 +116,10 @@ export class MouseHandler {
                         copyButton.classList.add('copied');
                         
                         setTimeout(() => {
-                            span.textContent = originalText;
-                            copyButton.classList.remove('copied');
+                            if (span && span.isConnected) {
+                                span.textContent = originalText;
+                                copyButton.classList.remove('copied');
+                            }
                         }, 2000);
                     }).catch(err => {
                         console.error('Dabir.js: Failed to copy text: ', err);
@@ -132,7 +134,7 @@ export class MouseHandler {
     onSelectionChange() {
         try {
             if (this.ignoreSelectionChange) return;
-            if (!this.editor) return;
+            if (!this.editor || this.editor.isDestroyed) return;
 
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0 || !this.editor.element.contains(selection.anchorNode)) {
@@ -170,7 +172,9 @@ export class MouseHandler {
             
             // --- 4. Schedule Smart Parse ---
             // For all other cases (typing, moving cursor in plain text), schedule a parse.
-            this.debouncedSmartParse();
+            if (this.debouncedSmartParse) {
+                this.debouncedSmartParse();
+            }
         } catch (error) {
             console.error('Dabir.js Error: MouseHandler.onSelectionChange crashed.', error);
         }
@@ -193,7 +197,7 @@ export class MouseHandler {
     }
     
     _enterRawMode(element, range) {
-        if (!this.editor) return;
+        if (!this.editor || this.editor.isDestroyed) return;
         const markdownInfo = this._htmlToRawMarkdown(element);
         if (!markdownInfo) return;
 
@@ -235,10 +239,17 @@ export class MouseHandler {
             selection.addRange(newRange);
         }
         
-        requestAnimationFrame(() => { this.ignoreSelectionChange = false; });
+        requestAnimationFrame(() => { 
+            if (this.editor && !this.editor.isDestroyed) {
+                this.ignoreSelectionChange = false; 
+            }
+        });
     }
 
     _revertActiveRawNode() {
+        // Guard clause: Prevent execution if editor is destroyed
+        if (!this.editor || this.editor.isDestroyed) return;
+
         if (!this.activeRawNode || !this.activeRawNode.isConnected) {
             this.activeRawNode = null;
             return;
@@ -266,10 +277,16 @@ export class MouseHandler {
         }
         
         nodeToRevert.replaceWith(newElement);
-        requestAnimationFrame(() => { this.ignoreSelectionChange = false; });
+        requestAnimationFrame(() => { 
+            if (this.editor && !this.editor.isDestroyed) {
+                this.ignoreSelectionChange = false; 
+            }
+        });
     }
 
     _tryToParseInline(block) {
+        // Guard clause: Prevent execution if editor is destroyed
+        if (!this.editor || this.editor.isDestroyed) return false;
         if (!block || !block.isConnected || this.activeRawNode) return false;
     
         const selection = window.getSelection();
@@ -348,7 +365,11 @@ export class MouseHandler {
             this.ignoreSelectionChange = true;
             restoreCursor(cursorPos);
             this.editor.saveContent();
-            requestAnimationFrame(() => { this.ignoreSelectionChange = false; });
+            requestAnimationFrame(() => { 
+                if (this.editor && !this.editor.isDestroyed) {
+                    this.ignoreSelectionChange = false; 
+                }
+            });
         }
         
         return somethingChanged;
