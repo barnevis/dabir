@@ -11,7 +11,11 @@ export class InputHandler {
         this.editor = editor;
         this.element = editor.element;
 
-        this.debouncedSave = debounce(() => this.editor.saveContent(), 250);
+        this.debouncedSave = debounce(() => {
+            if (this.editor && !this.editor.isDestroyed) {
+                this.editor.saveContent();
+            }
+        }, 250);
         
         // Bind and store the handler to be able to remove it later
         this.boundHandle = this.handle.bind(this);

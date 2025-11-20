@@ -56,6 +56,7 @@ export class MouseHandler {
 
     onBlur() {
         try {
+            if (!this.editor) return;
             // When editor loses focus, revert any active raw node to its formatted state.
             if (this.activeRawNode) {
                 this._revertActiveRawNode();
@@ -72,12 +73,14 @@ export class MouseHandler {
 
     onClick(event) {
         try {
+            if (!this.editor) return;
             const target = event.target;
 
             if (target.matches('li.checklist-item input[type="checkbox"]')) {
                 const listItem = target.closest('li.checklist-item');
                 if (listItem) {
                     setTimeout(() => { // Allow checkbox state to update
+                        if (!this.editor) return; // Check inside timeout
                         const isChecked = target.checked;
                         listItem.classList.toggle('checked', isChecked);
                         const childCheckboxes = listItem.querySelectorAll('li.checklist-item input[type="checkbox"]');
@@ -129,6 +132,7 @@ export class MouseHandler {
     onSelectionChange() {
         try {
             if (this.ignoreSelectionChange) return;
+            if (!this.editor) return;
 
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0 || !this.editor.element.contains(selection.anchorNode)) {
@@ -174,6 +178,9 @@ export class MouseHandler {
 
     _smartParseCurrentBlock() {
         try {
+            // Guard clause: Check if editor still exists
+            if (!this.editor || this.editor.isDestroyed) return;
+
             // This is called after a delay. It parses the block where the cursor currently is.
             if (this.activeRawNode) return;
             const currentBlock = this._findCurrentBlock();
@@ -186,6 +193,7 @@ export class MouseHandler {
     }
     
     _enterRawMode(element, range) {
+        if (!this.editor) return;
         const markdownInfo = this._htmlToRawMarkdown(element);
         if (!markdownInfo) return;
 
@@ -369,6 +377,7 @@ export class MouseHandler {
     }
     
     _findCurrentBlock() {
+        if (!this.editor) return null;
         const { selection } = this.editor;
         const anchor = selection.anchorNode;
         if (!anchor) return null;
