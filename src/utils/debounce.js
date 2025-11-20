@@ -1,4 +1,3 @@
-
 /**
  * Creates a debounced function that delays invoking func until after wait milliseconds have elapsed
  * since the last time the debounced function was invoked.
@@ -12,6 +11,7 @@ export function debounce(func, wait) {
     const executedFunction = function(...args) {
         const later = () => {
             clearTimeout(timeout);
+            timeout = null;
             func(...args);
         };
         clearTimeout(timeout);
@@ -19,7 +19,10 @@ export function debounce(func, wait) {
     };
 
     executedFunction.cancel = () => {
-        clearTimeout(timeout);
+        if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
     };
 
     return executedFunction;

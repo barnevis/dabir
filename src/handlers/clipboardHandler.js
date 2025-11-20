@@ -1,4 +1,3 @@
-
 /**
  * Handles clipboard events (copy, paste).
  */
@@ -48,7 +47,14 @@ export class ClipboardHandler {
      * Removes event listeners.
      */
     destroy() {
-        this.element.removeEventListener('paste', this.boundOnPaste);
-        this.element.removeEventListener('copy', this.boundOnCopy);
+        if (this.element) {
+            this.element.removeEventListener('paste', this.boundOnPaste);
+            this.element.removeEventListener('copy', this.boundOnCopy);
+        }
+        
+        this.editor = null;
+        this.element = null;
+        this.boundOnPaste = null;
+        this.boundOnCopy = null;
     }
 }

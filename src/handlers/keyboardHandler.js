@@ -27,12 +27,23 @@ export class KeyboardHandler {
     }
 
     /**
-     * Removes event listeners.
+     * Removes event listeners and clears shortcuts.
      */
     destroy() {
-        this.element.removeEventListener('keydown', this.boundHandleKeyDown);
-        this.element.removeEventListener('keyup', this.boundHandleKeyUp);
-        this.shortcuts.clear();
+        if (this.element) {
+            this.element.removeEventListener('keydown', this.boundHandleKeyDown);
+            this.element.removeEventListener('keyup', this.boundHandleKeyUp);
+        }
+        
+        if (this.shortcuts) {
+            this.shortcuts.clear();
+            this.shortcuts = null;
+        }
+
+        this.editor = null;
+        this.element = null;
+        this.boundHandleKeyDown = null;
+        this.boundHandleKeyUp = null;
     }
 
     /**
@@ -42,6 +53,7 @@ export class KeyboardHandler {
      * @param {Function} handler - تابعی که در زمان فشردن میانبر اجرا می‌شود.
      */
     register(key, modifiers = [], handler) {
+        if (!this.shortcuts) return;
         const keyString = `${modifiers.sort().join('+')}+${key}`.toLowerCase();
         if (!this.shortcuts.has(keyString)) {
             this.shortcuts.set(keyString, []);
@@ -63,7 +75,7 @@ export class KeyboardHandler {
 
         const keyString = `${modifiers.sort().join('+')}+${event.key}`.toLowerCase();
 
-        if (this.shortcuts.has(keyString)) {
+        if (this.shortcuts && this.shortcuts.has(keyString)) {
             for (const handler of this.shortcuts.get(keyString)) {
                 if (handler(event, this.editor) === true) {
                     event.preventDefault();

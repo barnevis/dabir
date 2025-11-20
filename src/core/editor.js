@@ -48,6 +48,12 @@ export class DabirEditor {
             plugins: [],
             ...options
         };
+        
+        /**
+         * Flag to prevent double destruction.
+         * @type {boolean}
+         */
+        this.isDestroyed = false;
 
         /**
          * سیستم مدیریت رویدادها.
@@ -151,6 +157,7 @@ export class DabirEditor {
      * محتوای فعلی ویرایشگر را در حافظه محلی ذخیره می‌کند.
      */
     saveContent() {
+        if (this.isDestroyed || !this.element) return;
         const html = this.element.innerHTML;
         this.storage.save(html);
         this.events.emit('change', { html, markdown: this.getMarkdown() });
@@ -170,6 +177,7 @@ export class DabirEditor {
      * @param {object} [options={}] - گزینه‌های پیکربندی برای پلاگین.
      */
     use(Plugin, options = {}) {
+        if (this.isDestroyed) return;
         if (this.plugins.has(Plugin.name)) return;
         const pluginApi = Plugin.install(this, options);
         this.plugins.set(Plugin.name, pluginApi || {});
@@ -181,6 +189,7 @@ export class DabirEditor {
      * @param {Function} listener - تابع callback که در زمان وقوع رویداد فراخوانی می‌شود.
      */
     on(event, listener) {
+        if (this.isDestroyed) return;
         this.events.on(event, listener);
     }
 
@@ -189,6 +198,7 @@ export class DabirEditor {
      * @returns {string} محتوای ویرایشگر به فرمت مارک‌داون.
      */
     getMarkdown() {
+        if (this.isDestroyed) return '';
         return this.htmlParser.parse(this.element);
     }
 
@@ -197,6 +207,7 @@ export class DabirEditor {
      * @returns {string} محتوای ویرایشگر به فرمت HTML.
      */
     getHTML() {
+        if (this.isDestroyed) return '';
         return this.element.innerHTML;
     }
 
@@ -206,6 +217,7 @@ export class DabirEditor {
      * @param {'markdown'|'html'} [format='markdown'] - فرمت محتوای ورودی.
      */
     setContent(content, format = 'markdown') {
+        if (this.isDestroyed) return;
         const html = format === 'markdown' ? this.parser.parse(content) : content;
         this.element.innerHTML = html;
         this.events.emit('contentSet');
@@ -216,25 +228,40 @@ export class DabirEditor {
      * این متد برای جلوگیری از نشت حافظه ضروری است.
      */
     destroy() {
-        // 1. Destroy handlers (removes event listeners and cancels timers)
-        this.inputHandler.destroy();
-        this.keyboardHandler.destroy();
-        this.mouseHandler.destroy();
-        this.clipboardHandler.destroy();
+        if (this.isDestroyed) return;
+        this.isDestroyed = true;
+
+        // 1. Destroy handlers (check existence before call)
+        if (this.inputHandler) this.inputHandler.destroy();
+        if (this.keyboardHandler) this.keyboardHandler.destroy();
+        if (this.mouseHandler) this.mouseHandler.destroy();
+        if (this.clipboardHandler) this.clipboardHandler.destroy();
 
         // 2. Allow plugins to cleanup
-        this.options.plugins.forEach(Plugin => {
-            if (typeof Plugin.destroy === 'function') {
-                Plugin.destroy(this);
-            }
-        });
-        this.plugins.clear();
+        
+        // Cleanup stored API instances if they have a destroy method
+        if (this.plugins) {
+            this.plugins.forEach(pluginApi => {
+                if (pluginApi && typeof pluginApi.destroy === 'function') {
+                    pluginApi.destroy();
+                }
+            });
+            this.plugins.clear();
+        }
+
+        // Cleanup static classes
+        if (this.options && this.options.plugins) {
+            this.options.plugins.forEach(Plugin => {
+                if (typeof Plugin.destroy === 'function') {
+                    Plugin.destroy(this);
+                }
+            });
+        }
 
         // 3. Clear internal event listeners
-        this.events.clear();
+        if (this.events) this.events.clear();
 
-        // 4. Remove internal attributes/classes if necessary, or just leave DOM manipulation to user.
-        // We remove contenteditable to indicate it's no longer active.
+        // 4. Cleanup DOM
         if (this.element) {
             this.element.removeAttribute('contenteditable');
             this.element.classList.remove('dabir-editor');
@@ -247,5 +274,12 @@ export class DabirEditor {
         this.renderer = null;
         this.parser = null;
         this.htmlParser = null;
+        this.inputHandler = null;
+        this.keyboardHandler = null;
+        this.mouseHandler = null;
+        this.clipboardHandler = null;
+        this.plugins = null;
+        this.events = null;
+        this.options = null;
     }
 }

@@ -31,13 +31,28 @@ export class MouseHandler {
      * Cleans up event listeners and timers.
      */
     destroy() {
-        this.element.removeEventListener('click', this.boundOnClick);
-        this.element.removeEventListener('blur', this.boundOnBlur);
-        document.removeEventListener('selectionchange', this.boundOnSelectionChange);
-        
+        // 1. Stop timer
         if (this.debouncedSmartParse && typeof this.debouncedSmartParse.cancel === 'function') {
             this.debouncedSmartParse.cancel();
         }
+
+        // 2. Remove global listener
+        document.removeEventListener('selectionchange', this.boundOnSelectionChange);
+
+        // 3. Remove element listeners if element exists
+        if (this.element) {
+            this.element.removeEventListener('click', this.boundOnClick);
+            this.element.removeEventListener('blur', this.boundOnBlur);
+        }
+
+        // 4. Clear references
+        this.editor = null;
+        this.element = null;
+        this.activeRawNode = null;
+        this.debouncedSmartParse = null;
+        this.boundOnClick = null;
+        this.boundOnBlur = null;
+        this.boundOnSelectionChange = null;
     }
 
     onBlur() {

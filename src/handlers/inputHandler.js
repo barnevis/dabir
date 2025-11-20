@@ -28,9 +28,20 @@ export class InputHandler {
      * Cleans up event listeners and timers.
      */
     destroy() {
-        this.element.removeEventListener('input', this.boundHandle);
+        // 1. Stop timer
         if (this.debouncedSave && typeof this.debouncedSave.cancel === 'function') {
             this.debouncedSave.cancel();
         }
+
+        // 2. Remove listener if element exists
+        if (this.element) {
+            this.element.removeEventListener('input', this.boundHandle);
+        }
+
+        // 3. Clear references
+        this.editor = null;
+        this.element = null;
+        this.debouncedSave = null;
+        this.boundHandle = null;
     }
 }
