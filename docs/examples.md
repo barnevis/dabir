@@ -55,7 +55,7 @@
 
 ## ۳. ویرایشگر با پیش‌نمایش زنده
 
-می‌توانید یک پنل پیش‌نمایش ایجاد کنید که با استفاده از رویداد `change` ویرایشگر، محتوای مارک‌داون را به صورت زنده نمایش دهد. برای این کار به یک کتابخانه خارجی برای تبدیل مارک‌داون به HTML در سمت کلاینت نیاز دارید (مانند `marked`).
+می‌توانید یک پنل پیش‌نمایش ایجاد کنید که با استفاده از رویداد `change` ویرایشگر، محتوای مارک‌داون را به صورت زنده نمایش دهد.
 
 ```html
 <div style="display: flex; gap: 20px;">
@@ -81,9 +81,9 @@
 </script>
 ```
 
-## ۴. استفاده در React
+## ۴. استفاده در React (بسیار مهم: مدیریت حافظه)
 
-برای استفاده از «دبیر» در یک کامپوننت React، از `useEffect` برای راه‌اندازی ویرایشگر و از `useRef` برای دسترسی به المان DOM استفاده کنید.
+برای استفاده از «دبیر» در یک کامپوننت React، باید حتماً در تابع cleanup متد `destroy` را صدا بزنید تا از نشت حافظه جلوگیری شود.
 
 ```jsx
 import React, { useEffect, useRef } from 'react';
@@ -95,17 +95,19 @@ function DabirEditorComponent() {
     const editorInstance = useRef(null);
 
     useEffect(() => {
-        // برای جلوگیری از راه‌اندازی مجدد در حین hot-reloading
+        // جلوگیری از راه‌اندازی مجدد در حین توسعه
         if (editorRef.current && !editorInstance.current) {
             editorInstance.current = new DabirEditor(editorRef.current, {
                 placeholder: 'نوشتن در React...'
             });
         }
         
-        // در زمان unmount کامپوننت، باید ویرایشگر را تخریب کرد
-        // (این قابلیت در آینده به دبیر اضافه خواهد شد)
+        // تخریب ویرایشگر هنگام حذف کامپوننت (Unmount)
         return () => {
-            // editorInstance.current?.destroy();
+            if (editorInstance.current) {
+                editorInstance.current.destroy();
+                editorInstance.current = null;
+            }
         };
     }, []);
 
@@ -117,7 +119,7 @@ export default DabirEditorComponent;
 
 ## ۵. استفاده در Vue.js
 
-الگوی مشابهی برای استفاده در Vue.js وجود دارد. از `onMounted` برای راه‌اندازی و از `ref` برای دسترسی به المان استفاده کنید.
+الگوی مشابهی برای استفاده در Vue.js وجود دارد. استفاده از `onBeforeUnmount` برای پاکسازی ضروری است.
 
 ```vue
 <template>
@@ -141,14 +143,18 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-    // editorInstance?.destroy();
+    // آزادسازی منابع
+    if (editorInstance) {
+        editorInstance.destroy();
+        editorInstance = null;
+    }
 });
 </script>
 ```
 
 ## ۶. ویرایشگر چندزبانه
 
-با استفاده از `DirectionPlugin`، ویرایشگر به صورت خودکار جهت متن (راست-به-چپ یا چپ-به-راست) را برای هر پاراگراف بر اساس محتوای آن تنظیم می‌کند. این کار نوشتن به دو زبان فارسی و انگلیسی را بسیار روان می‌کند.
+با استفاده از `DirectionPlugin`، ویرایشگر به صورت خودکار جهت متن (راست-به-چپ یا چپ-به-راست) را برای هر پاراگراف تنظیم می‌کند.
 
 ```javascript
 import DabirEditor from './src/index.js';

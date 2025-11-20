@@ -13,22 +13,7 @@
 
 ### استفاده از CDN (در آینده)
 
-در آینده، امکان استفاده از ویرایشگر از طریق CDN نیز فراهم خواهد شد:
-
-```html
-<!-- هنوز آماده نیست -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/alirho/dabir/styles.css">
-<script type="module" src="https://cdn.jsdelivr.net/gh/alirho/dabir/src/index.js"></script>
-```
-
-### استفاده از npm (در آینده)
-
-پس از انتشار به عنوان یک پکیج npm، می‌توانید آن را به این صورت نصب کنید:
-
-```bash
-# هنوز آماده نیست
-npm install dabir-editor
-```
+در آینده، امکان استفاده از ویرایشگر از طریق CDN نیز فراهم خواهد شد.
 
 ## ۲. راه‌اندازی اولین ویرایشگر
 
@@ -36,28 +21,19 @@ npm install dabir-editor
 
 ### مرحله ۱: ساختار فایل HTML
 
-یک فایل HTML ساده ایجاد کنید و فایل CSS ویرایشگر را به آن اضافه کنید. همچنین یک المان `<div>` برای ویرایشگر در نظر بگیرید.
+یک فایل HTML ساده ایجاد کنید و فایل CSS ویرایشگر را به آن اضافه کنید.
 
 ```html
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>اولین ویرایشگر دبیر</title>
-    
-    <!-- ۱. فایل CSS را اضافه کنید -->
     <link rel="stylesheet" href="path/to/your/styles.css">
-    
-    <style>
-        body { background-color: #f0f2f5; padding: 2rem; }
-    </style>
+    <style> body { background-color: #f0f2f5; padding: 2rem; } </style>
 </head>
 <body>
-    <!-- ۲. یک المان برای ویرایشگر ایجاد کنید -->
     <div id="editor"></div>
-
-    <!-- ۳. اسکریپت راه‌اندازی را اضافه کنید -->
     <script type="module">
         // کدهای جاوا اسکریپت در اینجا قرار می‌گیرد
     </script>
@@ -70,18 +46,15 @@ npm install dabir-editor
 داخل تگ `<script type="module">`، کلاس اصلی ویرایشگر را وارد (import) کرده و یک نمونه جدید از آن بسازید.
 
 ```javascript
-// داخل تگ <script type="module">
-
 import DabirEditor from './path/to/your/src/index.js';
 
-// منتظر بمانید تا صفحه کاملاً بارگذاری شود
 document.addEventListener('DOMContentLoaded', () => {
-    // ویرایشگر را روی المان مورد نظر راه‌اندازی کنید
-    new DabirEditor('#editor');
+    const editor = new DabirEditor('#editor');
+    
+    // اگر در یک برنامه SPA هستید، بعداً این را صدا بزنید:
+    // editor.destroy();
 });
 ```
-
-اکنون ویرایشگر شما آماده استفاده است!
 
 ## ۳. تنظیمات پایه
 
@@ -89,52 +62,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ```javascript
 new DabirEditor('#editor', {
-    // متنی که در هنگام خالی بودن ویرایشگر نمایش داده می‌شود
     placeholder: 'داستان خود را اینجا بنویسید...',
-    
-    // تنظیمات ذخیره‌سازی خودکار
     storage: {
-        enabled: true, // فعال بودن ذخیره‌سازی
-        key: 'my-unique-note-key' // کلید منحصر به فرد برای این ویرایشگر
+        enabled: true, 
+        key: 'my-unique-note-key'
     }
 });
 ```
 
 ## ۴. افزودن پلاگین‌ها
 
-«دبیر» از یک سیستم پلاگین قدرتمند برای گسترش عملکرد خود استفاده می‌کند. برای افزودن پلاگین‌ها، آن‌ها را وارد کرده و به آرایه `plugins` در تنظیمات اضافه کنید.
+«دبیر» از یک سیستم پلاگین قدرتمند برای گسترش عملکرد خود استفاده می‌کند.
 
 ```javascript
 import DabirEditor from './src/index.js';
-// پلاگین‌های مورد نیاز را وارد کنید
 import { AdmonitionPlugin } from './src/plugins/admonitionPlugin.js';
-import { DirectionPlugin } from './src/plugins/directionPlugin.js';
 import { ListPlugin } from './src/plugins/listPlugin.js';
-import { TablePlugin } from './src/plugins/tablePlugin.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     new DabirEditor('#editor', {
-        placeholder: 'یادداشت خود را با پلاگین‌ها بنویسید...',
         plugins: [
             AdmonitionPlugin,
-            DirectionPlugin,
-            ListPlugin,
-            TablePlugin
+            ListPlugin
         ]
     });
 });
 ```
 
-## ۵. رفع مشکلات رایج
+## ۵. پاکسازی و مدیریت منابع (بسیار مهم)
 
--   **ویرایشگر نمایش داده نمی‌شود:**
-    -   مطمئن شوید که سلکتور CSS (`#editor`) صحیح است و چنین المانی در صفحه وجود دارد.
-    -   بررسی کنید که مسیر فایل جاوا اسکریپت در دستور `import` درست باشد.
-    -   خطاهای کنسول مرورگر را بررسی کنید.
+اگر از فریم‌ورک‌هایی مثل React, Vue, Angular استفاده می‌کنید یا ویرایشگر را به صورت دینامیک ایجاد و حذف می‌کنید، **باید** هنگام حذف ویرایشگر متد `destroy()` را صدا بزنید.
 
--   **استایل‌ها به درستی اعمال نمی‌شوند:**
-    -   مطمئن شوید که فایل `styles.css` به درستی در `<head>` صفحه لینک شده است و مسیر آن صحیح است.
-    -   بررسی کنید که آیا استایل‌های دیگری در پروژه شما، استایل‌های «دبیر» را بازنویسی (override) می‌کنند یا خیر.
-
--   **پلاگین‌ها کار نمی‌کنند:**
-    -   مطمئن شوید که پلاگین‌ها را به درستی `import` کرده و در آرایه `plugins` در تنظیمات قرار داده‌اید.
+```javascript
+// هنگامی که دیگر به ویرایشگر نیاز نیست
+editor.destroy();
+```
+این کار باعث می‌شود تمام Event Listener ها حذف شده و از نشت حافظه (Memory Leak) جلوگیری شود.

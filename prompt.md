@@ -1092,3 +1092,25 @@ code 3
 - اگر `href` یا `src` با `javascript:` یا `data:` شروع می‌شه، حذف بشه
 - اگر Attribute ای با `on` شروع می‌شه (مثل onclick), حذف بشه
 - اگر `style` شامل `expression` یا `behavior` باشد، حذف بشه
+
+## پرامپت ۱۴۲
+با توجه به مشکل‌هایی که بر طرف کردی
+1. Memory Leak - destroy methods کامل
+2. Error Handling - try-catch جامع
+3. Input Validation - اعتبارسنجی کامل
+4. Race Conditions - بررسی‌های دوگانه
+5. XSS Prevention - sanitization 
+
+سندهای زیر را بروزرسانی کن:
+1. apiReference.md
+2. architecture.md
+3. configuration.md
+4. examples.md
+5. gettingStarted.md
+6. performance.md
+7. README.md
+
+سندهای زیر را هم ایجاد کن:
+1. security.md
+8. troubleshooting.md
+3. bestPractices.md
