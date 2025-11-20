@@ -1083,3 +1083,12 @@ code 3
 تقریباً تمام Race Condition ها را برطرف کردی، اما دو متد private در MouseHandler هنوز نیاز به بررسی دارند:
 -  `_revertActiveRawNode()`
 -   `_tryToParseInline(block)`
+
+## پرامپت ۱۴۱
+می‌خوام مشکل آسیب‌پذیری امنیتی XSS در setContent را بر طرف کنی.  برای رفع مشکل پاکسازی HTML** (HTML Sanitization) قبل از قرار دادن در صفحه را انجام بده:
+- تگ‌های خطرناک (مثل `<script>`) را حذف کن
+- Attribute های خطرناک (مثل `onerror`, `onclick`) را حذف کن
+- URL های مخرب (مثل `javascript:`) را مسدود کن
+- اگر `href` یا `src` با `javascript:` یا `data:` شروع می‌شه، حذف بشه
+- اگر Attribute ای با `on` شروع می‌شه (مثل onclick), حذف بشه
+- اگر `style` شامل `expression` یا `behavior` باشد، حذف بشه
