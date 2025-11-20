@@ -1,4 +1,3 @@
-
 import { parseInline } from '../parsers/inlineParser.js';
 import { parseLiveBlock } from '../parsers/liveParser.js';
 import { moveCursorToEnd } from '../utils/dom.js';
@@ -56,117 +55,133 @@ export class MouseHandler {
     }
 
     onBlur() {
-        // When editor loses focus, revert any active raw node to its formatted state.
-        if (this.activeRawNode) {
-            this._revertActiveRawNode();
-        }
-        // Also, trigger one final parse on the last known block.
-        const lastBlock = this._findCurrentBlock();
-        if (lastBlock) {
-             this._tryToParseInline(lastBlock);
+        try {
+            // When editor loses focus, revert any active raw node to its formatted state.
+            if (this.activeRawNode) {
+                this._revertActiveRawNode();
+            }
+            // Also, trigger one final parse on the last known block.
+            const lastBlock = this._findCurrentBlock();
+            if (lastBlock) {
+                 this._tryToParseInline(lastBlock);
+            }
+        } catch (error) {
+            console.error('Dabir.js Error: MouseHandler.onBlur crashed.', error);
         }
     }
 
     onClick(event) {
-        const target = event.target;
+        try {
+            const target = event.target;
 
-        if (target.matches('li.checklist-item input[type="checkbox"]')) {
-            const listItem = target.closest('li.checklist-item');
-            if (listItem) {
-                setTimeout(() => { // Allow checkbox state to update
-                    const isChecked = target.checked;
-                    listItem.classList.toggle('checked', isChecked);
-                    const childCheckboxes = listItem.querySelectorAll('li.checklist-item input[type="checkbox"]');
-                    childCheckboxes.forEach(checkbox => {
-                        checkbox.checked = isChecked;
-                        const childLi = checkbox.closest('li.checklist-item');
-                        if (childLi) {
-                            childLi.classList.toggle('checked', isChecked);
-                        }
-                    });
-                    this.editor.saveContent();
-                }, 0);
-            }
-            return;
-        }
-
-        const copyButton = target.closest('.copy-code-btn');
-        if (copyButton) {
-            // Prevent re-triggering if we're already showing the "copied" message.
-            if (copyButton.classList.contains('copied')) {
+            if (target.matches('li.checklist-item input[type="checkbox"]')) {
+                const listItem = target.closest('li.checklist-item');
+                if (listItem) {
+                    setTimeout(() => { // Allow checkbox state to update
+                        const isChecked = target.checked;
+                        listItem.classList.toggle('checked', isChecked);
+                        const childCheckboxes = listItem.querySelectorAll('li.checklist-item input[type="checkbox"]');
+                        childCheckboxes.forEach(checkbox => {
+                            checkbox.checked = isChecked;
+                            const childLi = checkbox.closest('li.checklist-item');
+                            if (childLi) {
+                                childLi.classList.toggle('checked', isChecked);
+                            }
+                        });
+                        this.editor.saveContent();
+                    }, 0);
+                }
                 return;
             }
 
-            const wrapper = copyButton.closest('.code-block-wrapper');
-            const codeElement = wrapper?.querySelector('code');
-            if (codeElement) {
-                navigator.clipboard.writeText(codeElement.innerText).then(() => {
-                    const span = copyButton.querySelector('span');
-                    if (!span) return;
-                    
-                    const originalText = span.textContent;
-                    span.textContent = 'رونوشت شد!';
-                    copyButton.classList.add('copied');
-                    
-                    setTimeout(() => {
-                        span.textContent = originalText;
-                        copyButton.classList.remove('copied');
-                    }, 2000);
-                }).catch(err => {
-                    console.error('Dabir.js: Failed to copy text: ', err);
-                });
+            const copyButton = target.closest('.copy-code-btn');
+            if (copyButton) {
+                // Prevent re-triggering if we're already showing the "copied" message.
+                if (copyButton.classList.contains('copied')) {
+                    return;
+                }
+
+                const wrapper = copyButton.closest('.code-block-wrapper');
+                const codeElement = wrapper?.querySelector('code');
+                if (codeElement) {
+                    navigator.clipboard.writeText(codeElement.innerText).then(() => {
+                        const span = copyButton.querySelector('span');
+                        if (!span) return;
+                        
+                        const originalText = span.textContent;
+                        span.textContent = 'رونوشت شد!';
+                        copyButton.classList.add('copied');
+                        
+                        setTimeout(() => {
+                            span.textContent = originalText;
+                            copyButton.classList.remove('copied');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Dabir.js: Failed to copy text: ', err);
+                    });
+                }
             }
+        } catch (error) {
+            console.error('Dabir.js Error: MouseHandler.onClick crashed.', error);
         }
     }
     
     onSelectionChange() {
-        if (this.ignoreSelectionChange) return;
+        try {
+            if (this.ignoreSelectionChange) return;
 
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0 || !this.editor.element.contains(selection.anchorNode)) {
-            this.onBlur(); // Treat losing selection as a blur event
-            return;
-        }
-
-        const anchorNode = selection.anchorNode;
-        const range = selection.getRangeAt(0);
-
-        // --- 1. Handle Active Raw Node ---
-        // If cursor moves out of the active raw node, revert it to formatted HTML.
-        if (this.activeRawNode && !this.activeRawNode.contains(anchorNode)) {
-            this._revertActiveRawNode();
-        }
-        
-        // --- 2. Handle Text Selection ---
-        // If user is selecting a range of text, revert any raw node and do nothing else.
-        if (!range.collapsed) {
-            if (this.activeRawNode) this._revertActiveRawNode();
-            return;
-        }
-
-        // --- 3. Enter Raw Mode ---
-        // If cursor enters a formatted element, convert it to raw markdown for editing.
-        if (!this.activeRawNode) {
-            const parentElement = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
-            const formattingElement = parentElement.closest('strong, em, del, mark, a, code:not(pre *), h1, h2, h3, h4');
-            
-            if (formattingElement && formattingElement.closest('[contenteditable="true"]') === this.editor.element) {
-                this._enterRawMode(formattingElement, range);
-                return; // Stop further processing for this event
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0 || !this.editor.element.contains(selection.anchorNode)) {
+                this.onBlur(); // Treat losing selection as a blur event
+                return;
             }
+
+            const anchorNode = selection.anchorNode;
+            const range = selection.getRangeAt(0);
+
+            // --- 1. Handle Active Raw Node ---
+            // If cursor moves out of the active raw node, revert it to formatted HTML.
+            if (this.activeRawNode && !this.activeRawNode.contains(anchorNode)) {
+                this._revertActiveRawNode();
+            }
+            
+            // --- 2. Handle Text Selection ---
+            // If user is selecting a range of text, revert any raw node and do nothing else.
+            if (!range.collapsed) {
+                if (this.activeRawNode) this._revertActiveRawNode();
+                return;
+            }
+
+            // --- 3. Enter Raw Mode ---
+            // If cursor enters a formatted element, convert it to raw markdown for editing.
+            if (!this.activeRawNode) {
+                const parentElement = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+                const formattingElement = parentElement.closest('strong, em, del, mark, a, code:not(pre *), h1, h2, h3, h4');
+                
+                if (formattingElement && formattingElement.closest('[contenteditable="true"]') === this.editor.element) {
+                    this._enterRawMode(formattingElement, range);
+                    return; // Stop further processing for this event
+                }
+            }
+            
+            // --- 4. Schedule Smart Parse ---
+            // For all other cases (typing, moving cursor in plain text), schedule a parse.
+            this.debouncedSmartParse();
+        } catch (error) {
+            console.error('Dabir.js Error: MouseHandler.onSelectionChange crashed.', error);
         }
-        
-        // --- 4. Schedule Smart Parse ---
-        // For all other cases (typing, moving cursor in plain text), schedule a parse.
-        this.debouncedSmartParse();
     }
 
     _smartParseCurrentBlock() {
-        // This is called after a delay. It parses the block where the cursor currently is.
-        if (this.activeRawNode) return;
-        const currentBlock = this._findCurrentBlock();
-        if (currentBlock) {
-            this._tryToParseInline(currentBlock);
+        try {
+            // This is called after a delay. It parses the block where the cursor currently is.
+            if (this.activeRawNode) return;
+            const currentBlock = this._findCurrentBlock();
+            if (currentBlock) {
+                this._tryToParseInline(currentBlock);
+            }
+        } catch (error) {
+            console.error('Dabir.js Error: MouseHandler._smartParseCurrentBlock crashed.', error);
         }
     }
     

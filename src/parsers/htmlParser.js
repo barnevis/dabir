@@ -15,11 +15,14 @@ export class HtmlParser {
      * @returns {string}
      */
     parse(element) {
-        const rawMarkdown = this._convertNodeToMarkdown(element);
-        // Collapse sequences of 3 or more newlines into exactly two.
-        // This standardizes block spacing and removes extra blank lines
-        // caused by the recursive parsing logic.
-        return rawMarkdown.replace(/\n{3,}/g, '\n\n').trim();
+        try {
+            const rawMarkdown = this._convertNodeToMarkdown(element);
+            // Collapse sequences of 3 or more newlines into exactly two.
+            return rawMarkdown.replace(/\n{3,}/g, '\n\n').trim();
+        } catch (error) {
+            console.error('Dabir.js Error: HtmlParser crashed.', error);
+            return '';
+        }
     }
 
     _convertNodeToMarkdown(node, listState = {}) {
@@ -66,10 +69,17 @@ export class HtmlParser {
                 return `\`\`\`\n${node.textContent.replace(/\n$/, '')}\n\`\`\`\n\n`;
             default:
                 // Propagate markdown from plugins
-                for(const plugin of this.editor.plugins.keys()){
-                    if(this.editor.plugins.get(plugin).html2md){
-                        const markdown = this.editor.plugins.get(plugin).html2md(node, childMarkdown, listState, recurse);
-                        if(markdown) return markdown;
+                for(const pluginName of this.editor.plugins.keys()){
+                    try {
+                        const plugin = this.editor.plugins.get(pluginName);
+                        if(plugin && plugin.html2md){
+                            const markdown = plugin.html2md(node, childMarkdown, listState, recurse);
+                            if(markdown) return markdown;
+                        }
+                    } catch (error) {
+                         console.error(`Dabir.js Error: Plugin "${pluginName}" crashed during HTML conversion.`, 
+                             `Tag: ${node.tagName}`, error);
+                         // Fallback to default child processing
                     }
                 }
                 return childMarkdown;

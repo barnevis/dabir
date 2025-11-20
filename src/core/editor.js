@@ -158,9 +158,13 @@ export class DabirEditor {
      */
     saveContent() {
         if (this.isDestroyed || !this.element) return;
-        const html = this.element.innerHTML;
-        this.storage.save(html);
-        this.events.emit('change', { html, markdown: this.getMarkdown() });
+        try {
+            const html = this.element.innerHTML;
+            this.storage.save(html);
+            this.events.emit('change', { html, markdown: this.getMarkdown() });
+        } catch (error) {
+            console.error('Dabir.js Error: Failed to save content.', error);
+        }
     }
     
     /**
@@ -168,7 +172,9 @@ export class DabirEditor {
      * @private
      */
     _initPlugins() {
-        this.options.plugins.forEach(Plugin => this.use(Plugin));
+        if (Array.isArray(this.options.plugins)) {
+            this.options.plugins.forEach(Plugin => this.use(Plugin));
+        }
     }
 
     /**
@@ -178,9 +184,13 @@ export class DabirEditor {
      */
     use(Plugin, options = {}) {
         if (this.isDestroyed) return;
-        if (this.plugins.has(Plugin.name)) return;
-        const pluginApi = Plugin.install(this, options);
-        this.plugins.set(Plugin.name, pluginApi || {});
+        try {
+            if (this.plugins.has(Plugin.name)) return;
+            const pluginApi = Plugin.install(this, options);
+            this.plugins.set(Plugin.name, pluginApi || {});
+        } catch (error) {
+            console.error(`Dabir.js Error: Failed to install plugin "${Plugin.name || 'Unknown'}".`, error);
+        }
     }
     
     /**
@@ -199,7 +209,12 @@ export class DabirEditor {
      */
     getMarkdown() {
         if (this.isDestroyed) return '';
-        return this.htmlParser.parse(this.element);
+        try {
+            return this.htmlParser.parse(this.element);
+        } catch (error) {
+            console.error('Dabir.js Error: Failed to generate Markdown.', error);
+            return '';
+        }
     }
 
     /**
@@ -218,9 +233,13 @@ export class DabirEditor {
      */
     setContent(content, format = 'markdown') {
         if (this.isDestroyed) return;
-        const html = format === 'markdown' ? this.parser.parse(content) : content;
-        this.element.innerHTML = html;
-        this.events.emit('contentSet');
+        try {
+            const html = format === 'markdown' ? this.parser.parse(content) : content;
+            this.element.innerHTML = html;
+            this.events.emit('contentSet');
+        } catch (error) {
+            console.error('Dabir.js Error: Failed to set content.', error);
+        }
     }
 
     /**
@@ -241,9 +260,13 @@ export class DabirEditor {
         
         // Cleanup stored API instances if they have a destroy method
         if (this.plugins) {
-            this.plugins.forEach(pluginApi => {
-                if (pluginApi && typeof pluginApi.destroy === 'function') {
-                    pluginApi.destroy();
+            this.plugins.forEach((pluginApi, name) => {
+                try {
+                    if (pluginApi && typeof pluginApi.destroy === 'function') {
+                        pluginApi.destroy();
+                    }
+                } catch (error) {
+                    console.error(`Dabir.js Error: Error destroying plugin "${name}".`, error);
                 }
             });
             this.plugins.clear();
@@ -252,8 +275,12 @@ export class DabirEditor {
         // Cleanup static classes
         if (this.options && this.options.plugins) {
             this.options.plugins.forEach(Plugin => {
-                if (typeof Plugin.destroy === 'function') {
-                    Plugin.destroy(this);
+                try {
+                    if (typeof Plugin.destroy === 'function') {
+                        Plugin.destroy(this);
+                    }
+                } catch (error) {
+                    console.error(`Dabir.js Error: Error destroying static plugin "${Plugin.name}".`, error);
                 }
             });
         }

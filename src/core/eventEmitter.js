@@ -1,4 +1,3 @@
-
 /**
  * یک کلاس ساده برای مدیریت و انتشار رویدادها جهت ارتباطات داخلی.
  * @class EventEmitter
@@ -31,7 +30,13 @@ export default class EventEmitter {
      */
     emit(event, ...args) {
         if (this.events.has(event)) {
-            this.events.get(event).forEach(listener => listener(...args));
+            this.events.get(event).forEach(listener => {
+                try {
+                    listener(...args);
+                } catch (error) {
+                    console.error(`Dabir.js Error: Exception in event listener for "${event}"`, error);
+                }
+            });
         }
     }
 

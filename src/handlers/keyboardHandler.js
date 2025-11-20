@@ -1,4 +1,3 @@
-
 import { moveCursorToEnd } from '../utils/dom.js';
 import { parseLiveBlock } from '../parsers/liveParser.js';
 import { parseInline } from '../parsers/inlineParser.js';
@@ -67,37 +66,45 @@ export class KeyboardHandler {
      * @private
      */
     handleKeyDown(event) {
-        const modifiers = [];
-        if (event.ctrlKey) modifiers.push('ctrl');
-        if (event.metaKey) modifiers.push('meta');
-        if (event.altKey) modifiers.push('alt');
-        if (event.shiftKey) modifiers.push('shift');
+        try {
+            const modifiers = [];
+            if (event.ctrlKey) modifiers.push('ctrl');
+            if (event.metaKey) modifiers.push('meta');
+            if (event.altKey) modifiers.push('alt');
+            if (event.shiftKey) modifiers.push('shift');
 
-        const keyString = `${modifiers.sort().join('+')}+${event.key}`.toLowerCase();
+            const keyString = `${modifiers.sort().join('+')}+${event.key}`.toLowerCase();
 
-        if (this.shortcuts && this.shortcuts.has(keyString)) {
-            for (const handler of this.shortcuts.get(keyString)) {
-                if (handler(event, this.editor) === true) {
+            if (this.shortcuts && this.shortcuts.has(keyString)) {
+                for (const handler of this.shortcuts.get(keyString)) {
+                    try {
+                        if (handler(event, this.editor) === true) {
+                            event.preventDefault();
+                            break;
+                        }
+                    } catch (error) {
+                        console.error(`Dabir.js Error: Exception in shortcut handler for "${keyString}".`, error);
+                    }
+                }
+                // After executing custom shortcuts, check for native-like behavior
+                if (event.defaultPrevented) return;
+            }
+
+            if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                if (this.handleEnter(event)) {
                     event.preventDefault();
-                    break;
+                    return;
                 }
             }
-            // After executing custom shortcuts, check for native-like behavior
-            if (event.defaultPrevented) return;
-        }
 
-        if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            if (this.handleEnter(event)) {
-                event.preventDefault();
-                return;
+            if (event.key === 'Backspace' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                if (this.handleBackspace(event)) {
+                    event.preventDefault();
+                    return;
+                }
             }
-        }
-
-        if (event.key === 'Backspace' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            if (this.handleBackspace(event)) {
-                event.preventDefault();
-                return;
-            }
+        } catch (error) {
+            console.error('Dabir.js Error: handleKeyDown crashed.', error);
         }
     }
 
@@ -108,50 +115,55 @@ export class KeyboardHandler {
      * @private
      */
     handleBackspace(event) {
-        const { selection } = this.editor;
-        const range = selection.range;
+        try {
+            const { selection } = this.editor;
+            const range = selection.range;
 
-        if (range && range.collapsed && range.startOffset === 0) {
-            const parentElement = selection.parentElement;
-            const listItem = parentElement.closest('li.checklist-item');
-            
-            if (listItem) {
-                const contentContainer = listItem.querySelector('.checklist-content-wrapper > span');
-                if (contentContainer && contentContainer.contains(range.startContainer)) {
-                    const preCursorRange = document.createRange();
-                    preCursorRange.selectNodeContents(contentContainer);
-                    preCursorRange.setEnd(range.startContainer, range.startOffset);
-                    if (preCursorRange.toString().trim() === '') {
-                        // At the start of the item, convert to normal list item.
-                        const list = listItem.parentElement;
-                        const wrapper = listItem.querySelector('.checklist-content-wrapper');
-                        if (wrapper) {
-                            const contentNodes = contentContainer ? Array.from(contentContainer.childNodes) : [];
-                            wrapper.replaceWith(...contentNodes);
+            if (range && range.collapsed && range.startOffset === 0) {
+                const parentElement = selection.parentElement;
+                const listItem = parentElement.closest('li.checklist-item');
+                
+                if (listItem) {
+                    const contentContainer = listItem.querySelector('.checklist-content-wrapper > span');
+                    if (contentContainer && contentContainer.contains(range.startContainer)) {
+                        const preCursorRange = document.createRange();
+                        preCursorRange.selectNodeContents(contentContainer);
+                        preCursorRange.setEnd(range.startContainer, range.startOffset);
+                        if (preCursorRange.toString().trim() === '') {
+                            // At the start of the item, convert to normal list item.
+                            const list = listItem.parentElement;
+                            const wrapper = listItem.querySelector('.checklist-content-wrapper');
+                            if (wrapper) {
+                                const contentNodes = contentContainer ? Array.from(contentContainer.childNodes) : [];
+                                wrapper.replaceWith(...contentNodes);
+                            }
+
+                            if (listItem.textContent.trim() === '') {
+                                listItem.innerHTML = '<br>';
+                            }
+
+                            listItem.classList.remove('checklist-item', 'checked');
+
+                            if (list && !list.querySelector('li.checklist-item')) {
+                                list.classList.remove('checklist');
+                            }
+                            
+                            const newRange = document.createRange();
+                            newRange.selectNodeContents(listItem);
+                            newRange.collapse(true);
+                            selection.setRange(newRange);
+
+                            this.editor.saveContent();
+                            return true;
                         }
-
-                        if (listItem.textContent.trim() === '') {
-                            listItem.innerHTML = '<br>';
-                        }
-
-                        listItem.classList.remove('checklist-item', 'checked');
-
-                        if (list && !list.querySelector('li.checklist-item')) {
-                            list.classList.remove('checklist');
-                        }
-                        
-                        const newRange = document.createRange();
-                        newRange.selectNodeContents(listItem);
-                        newRange.collapse(true);
-                        selection.setRange(newRange);
-
-                        this.editor.saveContent();
-                        return true;
                     }
                 }
             }
+            return false;
+        } catch (error) {
+            console.error('Dabir.js Error: handleBackspace crashed.', error);
+            return false;
         }
-        return false;
     }
 
     /**
@@ -161,236 +173,241 @@ export class KeyboardHandler {
      * @private
      */
     handleEnter(event) {
-        const { selection } = this.editor;
-        const parentElement = selection.parentElement;
-        if (!parentElement) return false;
+        try {
+            const { selection } = this.editor;
+            const parentElement = selection.parentElement;
+            if (!parentElement) return false;
 
-        const codeBlockWrapper = parentElement.closest('.code-block-wrapper');
-        if (codeBlockWrapper) {
-            const range = selection.range;
-            if (!range || !range.collapsed) return false;
-        
-            const codeElement = codeBlockWrapper.querySelector('code');
-            if (!codeElement) return false;
-        
-            // Normalize the code content by replacing <br> and other elements with newlines
-            // to reliably detect empty lines regardless of DOM structure.
-            const getNormalizedTextAndCursor = () => {
-                const tempDiv = document.createElement('div');
-                const codeClone = codeElement.cloneNode(true);
-        
-                // Create a temporary container to correctly resolve innerHTML, including BRs
-                const walker = document.createTreeWalker(codeClone, NodeFilter.SHOW_ALL);
-                let normalizedHtml = '';
-                while (walker.nextNode()) {
-                    const node = walker.currentNode;
-                    if (node.nodeType === Node.TEXT_NODE) {
-                        normalizedHtml += node.textContent;
-                    } else if (node.tagName === 'BR') {
-                        normalizedHtml += '\n';
-                    } else if (node.tagName === 'DIV' && node.parentNode === codeClone) {
-                         if (normalizedHtml.length > 0 && !normalizedHtml.endsWith('\n')) {
-                            normalizedHtml += '\n';
-                        }
-                        normalizedHtml += node.innerHTML.replace(/<br\s*\/?>/gi, '\n') + '\n';
-                    }
-                }
-                
-                tempDiv.innerHTML = codeClone.innerHTML.replace(/<br\s*\/?>/gi, '\n');
-                const text = tempDiv.textContent;
-        
-                const preCursorRange = range.cloneRange();
-                preCursorRange.selectNodeContents(codeElement);
-                preCursorRange.setEnd(range.startContainer, range.startOffset);
-                const preCursorFragment = preCursorRange.cloneContents();
-                
-                tempDiv.innerHTML = '';
-                tempDiv.appendChild(preCursorFragment);
-                tempDiv.innerHTML = tempDiv.innerHTML.replace(/<br\s*\/?>/gi, '\n');
-                const cursorPos = tempDiv.textContent.length;
-        
-                return { text, cursorPos };
-            };
-        
-            const { text, cursorPos } = getNormalizedTextAndCursor();
-        
-            if (text.replace(/\u200B/g, '').trim() === '') {
-                const newBlock = document.createElement('div');
-                newBlock.innerHTML = '<br>';
-                codeBlockWrapper.replaceWith(newBlock);
-                moveCursorToEnd(newBlock);
-                this.editor.saveContent();
-                return true;
-            }
-        
-            const textBeforeCursor = text.substring(0, cursorPos);
-            const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n');
-            const lineStart = lastNewlineIndex + 1;
-        
-            const textAfterCursor = text.substring(cursorPos);
-            const nextNewlineIndex = textAfterCursor.indexOf('\n');
-            const lineEnd = cursorPos + (nextNewlineIndex === -1 ? textAfterCursor.length : nextNewlineIndex);
-        
-            const currentLineText = text.substring(lineStart, lineEnd);
-        
-            if (currentLineText.replace(/\u200B/g, '').trim() === '') {
-                const textBefore = text.substring(0, lineStart > 0 ? lineStart - 1 : 0);
-                const textAfter = text.substring(lineEnd + 1);
-        
-                const newBlock = document.createElement('div');
-                newBlock.innerHTML = '<br>';
-        
-                if (textBefore.trim()) {
-                    codeElement.textContent = textBefore.trimEnd();
-                    codeBlockWrapper.after(newBlock);
-                } else {
-                    codeBlockWrapper.replaceWith(newBlock);
-                }
-        
-                if (textAfter.trim()) {
-                    const newWrapper = this.editor.renderer.createFromHTML(`<div class="code-block-wrapper">${COPY_BUTTON_HTML}<pre><code></code></pre></div>`);
-                    newWrapper.querySelector('code').textContent = textAfter.trimStart();
-                    newBlock.after(newWrapper);
-                }
-        
-                moveCursorToEnd(newBlock);
-                this.editor.saveContent();
-                return true;
-            }
-        
-            if (currentLineText.trim() === '```') {
-                const newTextContent = (text.substring(0, lineStart) + text.substring(lineEnd + 1)).trim();
-                const newBlock = document.createElement('div');
-                newBlock.innerHTML = '<br>';
-        
-                if (newTextContent) {
-                    codeElement.textContent = newTextContent;
-                    codeBlockWrapper.after(newBlock);
-                } else {
-                    codeBlockWrapper.replaceWith(newBlock);
-                }
-        
-                moveCursorToEnd(newBlock);
-                this.editor.saveContent();
-                return true;
-            }
-        
-            return false; // Allow default behavior (inserting newline)
-        }
-    
-        const listItem = parentElement.closest('li');
-        if (listItem) {
-            const isChecklistItem = listItem.classList.contains('checklist-item');
-            const contentContainer = isChecklistItem ? listItem.querySelector('.checklist-content-wrapper > span') : listItem;
-
-            const isItemEmpty = (() => {
-                if (!contentContainer) return true;
-                // An item is empty if it has no direct text content. The presence of a sublist (UL/OL)
-                // does not count as content for this purpose.
-                let hasText = false;
-                for (const node of contentContainer.childNodes) {
-                    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
-                        hasText = true;
-                        break;
-                    }
-                    if (node.nodeType === Node.ELEMENT_NODE && !['UL', 'OL', 'BR'].includes(node.tagName)) {
-                        hasText = true; // e.g., an <img> or <a> tag
-                        break;
-                    }
-                }
-                return !hasText;
-            })();
-
-            if (isItemEmpty) {
-                // Find the top-most list container
-                let topList = listItem.parentElement;
-                while (topList.parentElement.closest('li')) {
-                    topList = topList.parentElement.closest('ul, ol');
-                }
-
-                const newBlock = document.createElement('div');
-                newBlock.innerHTML = '<br>';
-                
-                // Place the new block after the entire list structure
-                topList.after(newBlock);
-                
-                // Clean up: remove the now-empty item and traverse up, removing any parent lists that become empty
-                let currentList = listItem.parentElement;
-                listItem.remove();
-
-                while (currentList && currentList !== topList && currentList.children.length === 0) {
-                    const parentLi = currentList.parentElement;
-                    currentList.remove();
-                    currentList = parentLi ? parentLi.parentElement : null;
-                }
-
-                // If the top-level list itself is now empty, replace it completely.
-                if (topList.children.length === 0) {
-                    topList.replaceWith(newBlock);
-                }
-
-                moveCursorToEnd(newBlock);
-                this.editor.saveContent();
-                return true; // Prevent default Enter behavior
-            }
-
-            if (isChecklistItem) {
-                const newLi = document.createElement('li');
-                newLi.className = 'checklist-item';
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                
-                const newSpan = document.createElement('span');
-                newSpan.innerHTML = '<br>';
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'checklist-content-wrapper';
-                wrapper.appendChild(checkbox);
-                wrapper.appendChild(newSpan);
-                newLi.appendChild(wrapper);
-
-                listItem.after(newLi);
-                moveCursorToEnd(newSpan);
-                this.editor.saveContent();
-                return true;
-            }
-
-            return false;
-        }
-
-        const container = parentElement.closest('blockquote, .dabir-admonition');
-        if (container) {
-            const currentLine = parentElement.closest('div, p');
+            const codeBlockWrapper = parentElement.closest('.code-block-wrapper');
+            if (codeBlockWrapper) {
+                const range = selection.range;
+                if (!range || !range.collapsed) return false;
             
-            if (!currentLine || currentLine.classList.contains('dabir-admonition-title') || currentLine.parentElement !== container) {
+                const codeElement = codeBlockWrapper.querySelector('code');
+                if (!codeElement) return false;
+            
+                // Normalize the code content by replacing <br> and other elements with newlines
+                // to reliably detect empty lines regardless of DOM structure.
+                const getNormalizedTextAndCursor = () => {
+                    const tempDiv = document.createElement('div');
+                    const codeClone = codeElement.cloneNode(true);
+            
+                    // Create a temporary container to correctly resolve innerHTML, including BRs
+                    const walker = document.createTreeWalker(codeClone, NodeFilter.SHOW_ALL);
+                    let normalizedHtml = '';
+                    while (walker.nextNode()) {
+                        const node = walker.currentNode;
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            normalizedHtml += node.textContent;
+                        } else if (node.tagName === 'BR') {
+                            normalizedHtml += '\n';
+                        } else if (node.tagName === 'DIV' && node.parentNode === codeClone) {
+                             if (normalizedHtml.length > 0 && !normalizedHtml.endsWith('\n')) {
+                                normalizedHtml += '\n';
+                            }
+                            normalizedHtml += node.innerHTML.replace(/<br\s*\/?>/gi, '\n') + '\n';
+                        }
+                    }
+                    
+                    tempDiv.innerHTML = codeClone.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                    const text = tempDiv.textContent;
+            
+                    const preCursorRange = range.cloneRange();
+                    preCursorRange.selectNodeContents(codeElement);
+                    preCursorRange.setEnd(range.startContainer, range.startOffset);
+                    const preCursorFragment = preCursorRange.cloneContents();
+                    
+                    tempDiv.innerHTML = '';
+                    tempDiv.appendChild(preCursorFragment);
+                    tempDiv.innerHTML = tempDiv.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                    const cursorPos = tempDiv.textContent.length;
+            
+                    return { text, cursorPos };
+                };
+            
+                const { text, cursorPos } = getNormalizedTextAndCursor();
+            
+                if (text.replace(/\u200B/g, '').trim() === '') {
+                    const newBlock = document.createElement('div');
+                    newBlock.innerHTML = '<br>';
+                    codeBlockWrapper.replaceWith(newBlock);
+                    moveCursorToEnd(newBlock);
+                    this.editor.saveContent();
+                    return true;
+                }
+            
+                const textBeforeCursor = text.substring(0, cursorPos);
+                const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n');
+                const lineStart = lastNewlineIndex + 1;
+            
+                const textAfterCursor = text.substring(cursorPos);
+                const nextNewlineIndex = textAfterCursor.indexOf('\n');
+                const lineEnd = cursorPos + (nextNewlineIndex === -1 ? textAfterCursor.length : nextNewlineIndex);
+            
+                const currentLineText = text.substring(lineStart, lineEnd);
+            
+                if (currentLineText.replace(/\u200B/g, '').trim() === '') {
+                    const textBefore = text.substring(0, lineStart > 0 ? lineStart - 1 : 0);
+                    const textAfter = text.substring(lineEnd + 1);
+            
+                    const newBlock = document.createElement('div');
+                    newBlock.innerHTML = '<br>';
+            
+                    if (textBefore.trim()) {
+                        codeElement.textContent = textBefore.trimEnd();
+                        codeBlockWrapper.after(newBlock);
+                    } else {
+                        codeBlockWrapper.replaceWith(newBlock);
+                    }
+            
+                    if (textAfter.trim()) {
+                        const newWrapper = this.editor.renderer.createFromHTML(`<div class="code-block-wrapper">${COPY_BUTTON_HTML}<pre><code></code></pre></div>`);
+                        newWrapper.querySelector('code').textContent = textAfter.trimStart();
+                        newBlock.after(newWrapper);
+                    }
+            
+                    moveCursorToEnd(newBlock);
+                    this.editor.saveContent();
+                    return true;
+                }
+            
+                if (currentLineText.trim() === '```') {
+                    const newTextContent = (text.substring(0, lineStart) + text.substring(lineEnd + 1)).trim();
+                    const newBlock = document.createElement('div');
+                    newBlock.innerHTML = '<br>';
+            
+                    if (newTextContent) {
+                        codeElement.textContent = newTextContent;
+                        codeBlockWrapper.after(newBlock);
+                    } else {
+                        codeBlockWrapper.replaceWith(newBlock);
+                    }
+            
+                    moveCursorToEnd(newBlock);
+                    this.editor.saveContent();
+                    return true;
+                }
+            
+                return false; // Allow default behavior (inserting newline)
+            }
+        
+            const listItem = parentElement.closest('li');
+            if (listItem) {
+                const isChecklistItem = listItem.classList.contains('checklist-item');
+                const contentContainer = isChecklistItem ? listItem.querySelector('.checklist-content-wrapper > span') : listItem;
+
+                const isItemEmpty = (() => {
+                    if (!contentContainer) return true;
+                    // An item is empty if it has no direct text content. The presence of a sublist (UL/OL)
+                    // does not count as content for this purpose.
+                    let hasText = false;
+                    for (const node of contentContainer.childNodes) {
+                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+                            hasText = true;
+                            break;
+                        }
+                        if (node.nodeType === Node.ELEMENT_NODE && !['UL', 'OL', 'BR'].includes(node.tagName)) {
+                            hasText = true; // e.g., an <img> or <a> tag
+                            break;
+                        }
+                    }
+                    return !hasText;
+                })();
+
+                if (isItemEmpty) {
+                    // Find the top-most list container
+                    let topList = listItem.parentElement;
+                    while (topList.parentElement.closest('li')) {
+                        topList = topList.parentElement.closest('ul, ol');
+                    }
+
+                    const newBlock = document.createElement('div');
+                    newBlock.innerHTML = '<br>';
+                    
+                    // Place the new block after the entire list structure
+                    topList.after(newBlock);
+                    
+                    // Clean up: remove the now-empty item and traverse up, removing any parent lists that become empty
+                    let currentList = listItem.parentElement;
+                    listItem.remove();
+
+                    while (currentList && currentList !== topList && currentList.children.length === 0) {
+                        const parentLi = currentList.parentElement;
+                        currentList.remove();
+                        currentList = parentLi ? parentLi.parentElement : null;
+                    }
+
+                    // If the top-level list itself is now empty, replace it completely.
+                    if (topList.children.length === 0) {
+                        topList.replaceWith(newBlock);
+                    }
+
+                    moveCursorToEnd(newBlock);
+                    this.editor.saveContent();
+                    return true; // Prevent default Enter behavior
+                }
+
+                if (isChecklistItem) {
+                    const newLi = document.createElement('li');
+                    newLi.className = 'checklist-item';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    
+                    const newSpan = document.createElement('span');
+                    newSpan.innerHTML = '<br>';
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'checklist-content-wrapper';
+                    wrapper.appendChild(checkbox);
+                    wrapper.appendChild(newSpan);
+                    newLi.appendChild(wrapper);
+
+                    listItem.after(newLi);
+                    moveCursorToEnd(newSpan);
+                    this.editor.saveContent();
+                    return true;
+                }
+
                 return false;
             }
-    
-            const isLineEmpty = currentLine.textContent.trim().replace(/\u200B/g, '') === '';
-            
-            if (isLineEmpty) {
-                const contentChildren = Array.from(container.children).filter(el => 
-                    !el.classList.contains('dabir-admonition-title')
-                );
+
+            const container = parentElement.closest('blockquote, .dabir-admonition');
+            if (container) {
+                const currentLine = parentElement.closest('div, p');
                 
-                const newBlock = document.createElement('div');
-                newBlock.innerHTML = '<br>';
-    
-                if (contentChildren.length === 1 && contentChildren[0] === currentLine) {
-                    container.replaceWith(newBlock);
-                } else {
-                    container.after(newBlock);
-                    currentLine.remove();
+                if (!currentLine || currentLine.classList.contains('dabir-admonition-title') || currentLine.parentElement !== container) {
+                    return false;
                 }
+        
+                const isLineEmpty = currentLine.textContent.trim().replace(/\u200B/g, '') === '';
                 
-                moveCursorToEnd(newBlock);
-                this.editor.saveContent();
-                return true;
+                if (isLineEmpty) {
+                    const contentChildren = Array.from(container.children).filter(el => 
+                        !el.classList.contains('dabir-admonition-title')
+                    );
+                    
+                    const newBlock = document.createElement('div');
+                    newBlock.innerHTML = '<br>';
+        
+                    if (contentChildren.length === 1 && contentChildren[0] === currentLine) {
+                        container.replaceWith(newBlock);
+                    } else {
+                        container.after(newBlock);
+                        currentLine.remove();
+                    }
+                    
+                    moveCursorToEnd(newBlock);
+                    this.editor.saveContent();
+                    return true;
+                }
             }
+        
+            return false;
+        } catch (error) {
+            console.error('Dabir.js Error: handleEnter crashed.', error);
+            return false;
         }
-    
-        return false;
     }
 
     /**
@@ -399,31 +416,35 @@ export class KeyboardHandler {
      * @private
      */
     handleKeyUp(event) {
-        const currentBlock = this._findCurrentBlock();
-        if (event.key === 'Enter') {
-            if (currentBlock && currentBlock.previousElementSibling) {
-                const targetBlock = currentBlock.previousElementSibling;
-                if (this._tryToParseMultiLineBlock(targetBlock)) {
-                    return;
+        try {
+            const currentBlock = this._findCurrentBlock();
+            if (event.key === 'Enter') {
+                if (currentBlock && currentBlock.previousElementSibling) {
+                    const targetBlock = currentBlock.previousElementSibling;
+                    if (this._tryToParseMultiLineBlock(targetBlock)) {
+                        return;
+                    }
+                    if (this._tryToParseBlock(targetBlock, event.key, currentBlock)) {
+                        return;
+                    }
                 }
-                if (this._tryToParseBlock(targetBlock, event.key, currentBlock)) {
-                    return;
+            } else if (event.key === ' ') {
+                const parentElement = this.editor.selection.parentElement;
+                const listItem = parentElement ? parentElement.closest('li') : null;
+        
+                if (listItem && !listItem.classList.contains('checklist-item')) {
+                    if (this._tryToUpdateListItem(listItem)) {
+                        event.preventDefault();
+                        return;
+                    }
+                }
+                
+                if (currentBlock) {
+                    this._tryToParseBlock(currentBlock, event.key);
                 }
             }
-        } else if (event.key === ' ') {
-            const parentElement = this.editor.selection.parentElement;
-            const listItem = parentElement ? parentElement.closest('li') : null;
-    
-            if (listItem && !listItem.classList.contains('checklist-item')) {
-                if (this._tryToUpdateListItem(listItem)) {
-                    event.preventDefault();
-                    return;
-                }
-            }
-            
-            if (currentBlock) {
-                this._tryToParseBlock(currentBlock, event.key);
-            }
+        } catch (error) {
+            console.error('Dabir.js Error: handleKeyUp crashed.', error);
         }
     }
 
@@ -529,33 +550,37 @@ export class KeyboardHandler {
 
         for (let i = 0; i < lines.length; i++) {
             for (const pluginName of this.editor.plugins.keys()) {
-                const plugin = this.editor.plugins.get(pluginName);
-                if (plugin && plugin.markdownBlockParser) {
-                    const result = plugin.markdownBlockParser(lines, i, this.editor.parser);
-                    
-                    if (result && result.lastIndex === lines.length - 1) {
-                        const blocksToRemove = contextBlocks.slice(i, result.lastIndex + 1);
-                        const newElement = this.editor.renderer.createFromHTML(result.html);
+                try {
+                    const plugin = this.editor.plugins.get(pluginName);
+                    if (plugin && plugin.markdownBlockParser) {
+                        const result = plugin.markdownBlockParser(lines, i, this.editor.parser);
                         
-                        if (newElement) {
-                            requestAnimationFrame(() => {
-                                this.editor.renderer.replace(blocksToRemove[0], newElement);
-                                for (let j = 1; j < blocksToRemove.length; j++) {
-                                    blocksToRemove[j].remove();
-                                }
-
-                                if (newElement.tagName === 'TABLE') {
-                                    const firstCell = newElement.querySelector('td');
-                                    if (firstCell) {
-                                        moveCursorToEnd(firstCell);
+                        if (result && result.lastIndex === lines.length - 1) {
+                            const blocksToRemove = contextBlocks.slice(i, result.lastIndex + 1);
+                            const newElement = this.editor.renderer.createFromHTML(result.html);
+                            
+                            if (newElement) {
+                                requestAnimationFrame(() => {
+                                    this.editor.renderer.replace(blocksToRemove[0], newElement);
+                                    for (let j = 1; j < blocksToRemove.length; j++) {
+                                        blocksToRemove[j].remove();
                                     }
-                                }
 
-                                this.editor.saveContent();
-                            });
-                            return true;
+                                    if (newElement.tagName === 'TABLE') {
+                                        const firstCell = newElement.querySelector('td');
+                                        if (firstCell) {
+                                            moveCursorToEnd(firstCell);
+                                        }
+                                    }
+
+                                    this.editor.saveContent();
+                                });
+                                return true;
+                            }
                         }
                     }
+                } catch (error) {
+                     console.error(`Dabir.js Error: Plugin "${pluginName}" crashed during multi-line parsing.`, error);
                 }
             }
         }

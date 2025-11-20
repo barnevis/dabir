@@ -1,4 +1,3 @@
-
 import { debounce } from '../utils/debounce.js';
 
 /**
@@ -20,8 +19,12 @@ export class InputHandler {
     }
 
     handle() {
-        this.debouncedSave();
-        this.editor.events.emit('input');
+        try {
+            this.debouncedSave();
+            this.editor.events.emit('input');
+        } catch (error) {
+            console.error('Dabir.js Error: InputHandler crashed.', error);
+        }
     }
 
     /**

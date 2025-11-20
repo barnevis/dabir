@@ -34,7 +34,7 @@ export default class Storage {
             try {
                 localStorage.setItem(this.key, content);
             } catch (error) {
-                console.error('Dabir.js: Could not save content to localStorage.', error);
+                console.error('Dabir.js Error: Storage.save failed.', error);
             }
         }
     }
@@ -48,7 +48,7 @@ export default class Storage {
             try {
                 return localStorage.getItem(this.key);
             } catch (error) {
-                console.error('Dabir.js: Could not load content from localStorage.', error);
+                console.error('Dabir.js Error: Storage.load failed.', error);
                 return null;
             }
         }

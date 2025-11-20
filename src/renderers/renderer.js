@@ -17,8 +17,14 @@ export class Renderer {
      * @param {Node} newNode The new node.
      */
     replace(oldNode, newNode) {
-        oldNode.parentNode.replaceChild(newNode, oldNode);
-        this.editor.events.emit('render:replace', { oldNode, newNode });
+        try {
+            if (oldNode && oldNode.parentNode) {
+                oldNode.parentNode.replaceChild(newNode, oldNode);
+                this.editor.events.emit('render:replace', { oldNode, newNode });
+            }
+        } catch (error) {
+            console.error('Dabir.js Error: Renderer.replace crashed.', error);
+        }
     }
 
     /**
@@ -27,8 +33,13 @@ export class Renderer {
      * @returns {Node|null}
      */
     createFromHTML(htmlString) {
-        const template = document.createElement('template');
-        template.innerHTML = htmlString.trim();
-        return template.content.firstChild;
+        try {
+            const template = document.createElement('template');
+            template.innerHTML = htmlString.trim();
+            return template.content.firstChild;
+        } catch (error) {
+            console.error('Dabir.js Error: Renderer.createFromHTML crashed.', error);
+            return null;
+        }
     }
 }
