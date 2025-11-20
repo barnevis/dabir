@@ -210,4 +210,42 @@ export class DabirEditor {
         this.element.innerHTML = html;
         this.events.emit('contentSet');
     }
+
+    /**
+     * ویرایشگر را تخریب کرده و تمام منابع، شنونده‌ها و تایمرها را آزاد می‌کند.
+     * این متد برای جلوگیری از نشت حافظه ضروری است.
+     */
+    destroy() {
+        // 1. Destroy handlers (removes event listeners and cancels timers)
+        this.inputHandler.destroy();
+        this.keyboardHandler.destroy();
+        this.mouseHandler.destroy();
+        this.clipboardHandler.destroy();
+
+        // 2. Allow plugins to cleanup
+        this.options.plugins.forEach(Plugin => {
+            if (typeof Plugin.destroy === 'function') {
+                Plugin.destroy(this);
+            }
+        });
+        this.plugins.clear();
+
+        // 3. Clear internal event listeners
+        this.events.clear();
+
+        // 4. Remove internal attributes/classes if necessary, or just leave DOM manipulation to user.
+        // We remove contenteditable to indicate it's no longer active.
+        if (this.element) {
+            this.element.removeAttribute('contenteditable');
+            this.element.classList.remove('dabir-editor');
+        }
+
+        // 5. Clear references
+        this.element = null;
+        this.storage = null;
+        this.selection = null;
+        this.renderer = null;
+        this.parser = null;
+        this.htmlParser = null;
+    }
 }

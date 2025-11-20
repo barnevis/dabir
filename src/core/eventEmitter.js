@@ -1,3 +1,4 @@
+
 /**
  * یک کلاس ساده برای مدیریت و انتشار رویدادها جهت ارتباطات داخلی.
  * @class EventEmitter
@@ -32,5 +33,12 @@ export default class EventEmitter {
         if (this.events.has(event)) {
             this.events.get(event).forEach(listener => listener(...args));
         }
+    }
+
+    /**
+     * تمام شنونده‌های رویداد را پاک می‌کند.
+     */
+    clear() {
+        this.events.clear();
     }
 }

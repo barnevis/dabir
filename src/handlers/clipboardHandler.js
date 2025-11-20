@@ -9,8 +9,13 @@ export class ClipboardHandler {
     constructor(editor) {
         this.editor = editor;
         this.element = editor.element;
-        this.element.addEventListener('paste', this.onPaste.bind(this));
-        this.element.addEventListener('copy', this.onCopy.bind(this));
+        
+        // Bind and store handlers
+        this.boundOnPaste = this.onPaste.bind(this);
+        this.boundOnCopy = this.onCopy.bind(this);
+
+        this.element.addEventListener('paste', this.boundOnPaste);
+        this.element.addEventListener('copy', this.boundOnCopy);
     }
 
     onPaste(event) {
@@ -37,5 +42,13 @@ export class ClipboardHandler {
             event.clipboardData.setData('text/plain', markdown);
             this.editor.events.emit('copy', { markdown });
         }
+    }
+
+    /**
+     * Removes event listeners.
+     */
+    destroy() {
+        this.element.removeEventListener('paste', this.boundOnPaste);
+        this.element.removeEventListener('copy', this.boundOnCopy);
     }
 }

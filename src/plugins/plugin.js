@@ -1,3 +1,4 @@
+
 /**
  * کلاس پایه برای تمام پلاگین‌ها.
  * پلاگین‌ها باید این کلاس را extend کرده و متد استاتیک `install` را پیاده‌سازی کنند.
@@ -14,5 +15,15 @@ export default class Plugin {
      */
     static install(editor, options) {
         throw new Error('Plugin must implement the static install method.');
+    }
+
+    /**
+     * عملیات پاکسازی پلاگین را انجام می‌دهد.
+     * این متد اختیاری است و در زمان تخریب ویرایشگر فراخوانی می‌شود.
+     * @static
+     * @param {import('../core/editor.js').DabirEditor} editor - نمونه ویرایشگر.
+     */
+    static destroy(editor) {
+        // Optional: Clean up any external listeners or resources
     }
 }

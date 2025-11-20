@@ -1,3 +1,4 @@
+
 import { moveCursorToEnd } from '../utils/dom.js';
 import { parseLiveBlock } from '../parsers/liveParser.js';
 import { parseInline } from '../parsers/inlineParser.js';
@@ -16,8 +17,22 @@ export class KeyboardHandler {
         this.editor = editor;
         this.shortcuts = new Map();
         this.element = editor.element;
-        this.element.addEventListener('keydown', this.handleKeyDown.bind(this));
-        this.element.addEventListener('keyup', this.handleKeyUp.bind(this));
+
+        // Bind and store handlers
+        this.boundHandleKeyDown = this.handleKeyDown.bind(this);
+        this.boundHandleKeyUp = this.handleKeyUp.bind(this);
+
+        this.element.addEventListener('keydown', this.boundHandleKeyDown);
+        this.element.addEventListener('keyup', this.boundHandleKeyUp);
+    }
+
+    /**
+     * Removes event listeners.
+     */
+    destroy() {
+        this.element.removeEventListener('keydown', this.boundHandleKeyDown);
+        this.element.removeEventListener('keyup', this.boundHandleKeyUp);
+        this.shortcuts.clear();
     }
 
     /**

@@ -17,9 +17,27 @@ export class MouseHandler {
         // Debounced parser for newly typed inline markdown
         this.debouncedSmartParse = debounce(this._smartParseCurrentBlock.bind(this), 400);
 
-        this.element.addEventListener('click', this.onClick.bind(this));
-        this.element.addEventListener('blur', this.onBlur.bind(this));
-        document.addEventListener('selectionchange', this.onSelectionChange.bind(this));
+        // Bind and store handlers
+        this.boundOnClick = this.onClick.bind(this);
+        this.boundOnBlur = this.onBlur.bind(this);
+        this.boundOnSelectionChange = this.onSelectionChange.bind(this);
+
+        this.element.addEventListener('click', this.boundOnClick);
+        this.element.addEventListener('blur', this.boundOnBlur);
+        document.addEventListener('selectionchange', this.boundOnSelectionChange);
+    }
+
+    /**
+     * Cleans up event listeners and timers.
+     */
+    destroy() {
+        this.element.removeEventListener('click', this.boundOnClick);
+        this.element.removeEventListener('blur', this.boundOnBlur);
+        document.removeEventListener('selectionchange', this.boundOnSelectionChange);
+        
+        if (this.debouncedSmartParse && typeof this.debouncedSmartParse.cancel === 'function') {
+            this.debouncedSmartParse.cancel();
+        }
     }
 
     onBlur() {
