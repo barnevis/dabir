@@ -29,26 +29,71 @@ export class DabirEditor {
      * @param {DabirOptions} [options={}] - گزینه‌های پیکربندی برای ویرایشگر.
      */
     constructor(selector, options = {}) {
+        // --- Validation Layer ---
+        
+        // 1. Validate Selector
+        if (typeof selector !== 'string' || selector.trim() === '') {
+            throw new Error('Dabir.js Error: Invalid selector. It must be a non-empty string.');
+        }
+
         /**
          * المان اصلی ویرایشگر.
          * @type {HTMLElement}
          */
         this.element = document.querySelector(selector);
         if (!this.element) {
-            throw new Error(`Dabir.js: Element with selector "${selector}" not found.`);
+            throw new Error(`Dabir.js Error: Element with selector "${selector}" not found.`);
+        }
+
+        // 2. Prepare Defaults
+        const defaults = {
+            placeholder: 'اینجا بنویسید...',
+            storage: { enabled: true, key: 'dabir-content' },
+            plugins: []
+        };
+
+        // 3. Validate & Sanitize Options
+        // Ensure options is an object
+        const safeOptions = (typeof options === 'object' && options !== null) ? options : {};
+        
+        const finalOptions = { ...defaults, ...safeOptions };
+
+        // Validate Placeholder
+        if (typeof finalOptions.placeholder !== 'string') {
+            console.warn('Dabir.js Warning: "placeholder" option must be a string. Using default.');
+            finalOptions.placeholder = defaults.placeholder;
+        }
+
+        // Validate Plugins
+        if (!Array.isArray(finalOptions.plugins)) {
+            console.warn('Dabir.js Warning: "plugins" option must be an array. Using default (empty array).');
+            finalOptions.plugins = [];
+        }
+
+        // Validate Storage
+        const userStorage = safeOptions.storage;
+        // If storage is explicitly provided but invalid
+        if (userStorage !== undefined && (typeof userStorage !== 'object' || userStorage === null)) {
+             console.warn('Dabir.js Warning: "storage" option must be an object. Using default.');
+             finalOptions.storage = defaults.storage;
+        } else {
+            // Merge nested storage options
+            finalOptions.storage = { ...defaults.storage, ...(userStorage || {}) };
+            
+            if (typeof finalOptions.storage.key !== 'string' || finalOptions.storage.key.trim() === '') {
+                console.warn('Dabir.js Warning: Storage "key" must be a non-empty string. Using default key.');
+                finalOptions.storage.key = defaults.storage.key;
+            }
         }
 
         /**
          * گزینه‌های پیکربندی ویرایشگر.
          * @type {DabirOptions}
          */
-        this.options = {
-            placeholder: 'اینجا بنویسید...',
-            storage: { enabled: true, key: 'dabir-content' },
-            plugins: [],
-            ...options
-        };
+        this.options = finalOptions;
         
+        // --- End Validation Layer ---
+
         /**
          * Flag to prevent double destruction.
          * @type {boolean}
@@ -134,7 +179,13 @@ export class DabirEditor {
         this.element.setAttribute('data-placeholder', this.options.placeholder);
         
         this._loadContent();
-        this._initPlugins();
+        
+        // Wrap plugin initialization in try-catch to prevent startup crash
+        try {
+            this._initPlugins();
+        } catch (error) {
+            console.error('Dabir.js Error: Failed to initialize plugins.', error);
+        }
         
         this.events.emit('ready');
     }
@@ -172,9 +223,8 @@ export class DabirEditor {
      * @private
      */
     _initPlugins() {
-        if (Array.isArray(this.options.plugins)) {
-            this.options.plugins.forEach(Plugin => this.use(Plugin));
-        }
+        // Validated in constructor, guaranteed to be an array
+        this.options.plugins.forEach(Plugin => this.use(Plugin));
     }
 
     /**
@@ -185,11 +235,15 @@ export class DabirEditor {
     use(Plugin, options = {}) {
         if (this.isDestroyed) return;
         try {
+            if (!Plugin || typeof Plugin.install !== 'function') {
+                console.warn(`Dabir.js Warning: Invalid plugin provided. It must have a static "install" method.`);
+                return;
+            }
             if (this.plugins.has(Plugin.name)) return;
             const pluginApi = Plugin.install(this, options);
             this.plugins.set(Plugin.name, pluginApi || {});
         } catch (error) {
-            console.error(`Dabir.js Error: Failed to install plugin "${Plugin.name || 'Unknown'}".`, error);
+            console.error(`Dabir.js Error: Failed to install plugin "${Plugin ? (Plugin.name || 'Unknown') : 'Unknown'}".`, error);
         }
     }
     
