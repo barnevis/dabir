@@ -8,6 +8,7 @@ import { MouseHandler } from '../handlers/mouseHandler.js';
 import { ClipboardHandler } from '../handlers/clipboardHandler.js';
 import { InputHandler } from '../handlers/inputHandler.js';
 import { Renderer } from '../renderers/renderer.js';
+import { sanitize } from '../utils/sanitizer.js';
 
 /**
  * @typedef {object} DabirOptions
@@ -197,7 +198,8 @@ export class DabirEditor {
     _loadContent() {
         const savedContent = this.storage.load();
         if (savedContent) {
-            this.element.innerHTML = savedContent;
+            // Sanitize stored content to prevent XSS from modified local storage
+            this.element.innerHTML = sanitize(savedContent);
         } else {
             this.element.innerHTML = '<div><br></div>';
         }
@@ -288,7 +290,16 @@ export class DabirEditor {
     setContent(content, format = 'markdown') {
         if (this.isDestroyed) return;
         try {
-            const html = format === 'markdown' ? this.parser.parse(content) : content;
+            let html;
+            if (format === 'markdown') {
+                // Parse markdown to HTML, then sanitize the result
+                const rawHtml = this.parser.parse(content);
+                html = sanitize(rawHtml);
+            } else {
+                // Sanitize raw HTML input
+                html = sanitize(content);
+            }
+            
             this.element.innerHTML = html;
             this.events.emit('contentSet');
         } catch (error) {
